@@ -1,4 +1,4 @@
-package main
+package openssl
 
 type NativeType int
 const (
@@ -17,6 +17,7 @@ type Attribute struct {
     Prepend     string
     Native      NativeType
     Required    bool
+    IsUpdated   bool
 }
 
 /*
