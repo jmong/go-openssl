@@ -68,7 +68,7 @@ func (sb *privKeyBuild) Build() PrivKey {
     return PrivKey{
 		cmd:          OPENSSL,
 		action:       "genrsa",
-		Description:  DESCRIPTION,
+		Description:  "Create private key",
         Bits:         sb.bits,
 		Digest:       sb.digest,
 		Out:          sb.out,

@@ -107,8 +107,8 @@ func (sb *intermediateCABuild) NoDES(enabled bool) IntermediateCABuilder {
 func (sb *intermediateCABuild) Build() IntermediateCA {
     return IntermediateCA{
 		cmd:          OPENSSL,
-		action:       ACTION,
-		Description:  DESCRIPTION,
+		action:       "genrsa",
+		Description:  "Create intermediate certificate",
 		NewkeyRSA:    sb.newkeyrsa,
 		NewkeyDSA:    sb.newkeydsa,
 		NewkeyEC:     sb.newkeyec,

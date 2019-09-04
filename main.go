@@ -73,41 +73,45 @@ func chooseGoal(reader *bufio.Reader) int {
 
 /*
  */
-func buildSelfSignedCert(reader *bufio.Reader) openssl.SelfSigned {
+func buildCertificateCert(reader *bufio.Reader) openssl.Certificate {
     var value string
 
-	selfsigned := openssl.NewSelfSignedBuilder()
+    fmt.Println("-- Creating certificate --")
 
-    selfsigned.X509(true)
-    selfsigned.NoDES(true)
+	cert := openssl.NewCertificateBuilder()
+
+    cert.X509(true)
+    cert.NoDES(true)
 
     fmt.Print("Enter RSA bit size: ")
     value, _ = reader.ReadString('\n')
     value = strings.TrimSuffix(value, "\n")
     newkeyrsa, _ := strconv.Atoi(value)
-    selfsigned.NewkeyRSA(newkeyrsa)
+    cert.NewkeyRSA(newkeyrsa)
 
     fmt.Print("Enter digest: ")
     value, _ = reader.ReadString('\n')
-    selfsigned.Digest(strings.TrimSuffix(value, "\n"))
+    cert.Digest(strings.TrimSuffix(value, "\n"))
 
     fmt.Print("Enter days: ")
     value, _ = reader.ReadString('\n')
     value = strings.TrimSuffix(value, "\n")
     days, _ := strconv.Atoi(value)
-    selfsigned.Days(days)
+    cert.Days(days)
 
     fmt.Print("Enter output file: ")
     value, _ = reader.ReadString('\n')
-    selfsigned.Out(strings.TrimSuffix(value, "\n"))
+    cert.Out(strings.TrimSuffix(value, "\n"))
     
-    return selfsigned.Build()
+    return cert.Build()
 }
 
 /*
  */
 func buildPrivKey(reader *bufio.Reader) openssl.PrivKey {
     var value string
+
+    fmt.Println("-- Creating private key --")
 
 	privkey := openssl.NewPrivKeyBuilder()
 
@@ -138,37 +142,48 @@ func buildPrivKey(reader *bufio.Reader) openssl.PrivKey {
 }
 
 /* @TODO
- * 
+ * @see https://jamielinux.com/docs/openssl-certificate-authority/create-the-root-pair.html
  */
-func buildRootCA(reader *bufio.Reader, privkey *openssl.PrivKey) {
+func buildRootCA(reader *bufio.Reader, privkey *openssl.PrivKey) openssl.Certificate {
     var value string
 
-	selfsigned := openssl.NewSelfSignedBuilder()
+    fmt.Println("-- Creating CA certificate --")
 
-    selfsigned.X509(true)
-    selfsigned.NoDES(true)
+	cert := openssl.NewCertificateBuilder()
 
-    fmt.Print("Enter RSA bit size: ")
+    cert.X509(true)
+    cert.NoDES(true)
+    cert.New(true)
+    
+    fmt.Print("Enter private key file: ")
+    if privkey.Out.IsUpdated {
+        fmt.Println(privkey.Out.Value)
+        cert.Key(privkey.Out.Value)
+    }
+
+    fmt.Print("Enter config file: ")
     value, _ = reader.ReadString('\n')
-    value = strings.TrimSuffix(value, "\n")
-    newkeyrsa, _ := strconv.Atoi(value)
-    selfsigned.NewkeyRSA(newkeyrsa)
+    cert.Config(strings.TrimSuffix(value, "\n"))
+
+    fmt.Print("Enter extensions: ")
+    value, _ = reader.ReadString('\n')
+    cert.Extensions(strings.TrimSuffix(value, "\n"))
 
     fmt.Print("Enter digest: ")
     value, _ = reader.ReadString('\n')
-    selfsigned.Digest(strings.TrimSuffix(value, "\n"))
+    cert.Digest(strings.TrimSuffix(value, "\n"))
 
     fmt.Print("Enter days: ")
     value, _ = reader.ReadString('\n')
     value = strings.TrimSuffix(value, "\n")
     days, _ := strconv.Atoi(value)
-    selfsigned.Days(days)
+    cert.Days(days)
 
     fmt.Print("Enter output file: ")
     value, _ = reader.ReadString('\n')
-    selfsigned.Out(strings.TrimSuffix(value, "\n"))
+    cert.Out(strings.TrimSuffix(value, "\n"))
     
-    return selfsigned.Build()
+    return cert.Build() 
 }
 
 /*
@@ -185,16 +200,23 @@ func main() {
 
     switch goal = chooseGoal(reader); goal {
 	case 1:
-        selfsigned := buildSelfSignedCert(reader)
-        fmt.Println(selfsigned.String())
-        selfsigned.Exec()
+        cert := buildCertificateCert(reader)
+        fmt.Println(cert.String())
+        cert.Exec()
     case 2:
         privkey := buildPrivKey(reader)
         fmt.Println(privkey.String())
         privkey.Exec()
     case 3:
         privkey := buildPrivKey(reader)
-        buildRootCA(reader, &privkey)
+        pkerr := privkey.Exec()
+        if pkerr == nil {
+            cacert := buildRootCA(reader, &privkey)
+            fmt.Println(cacert.String())
+            cacert.Exec()
+        } else {
+            fmt.Printf("Error creating private key: %s\n", pkerr)
+        }
     }
 
     os.Exit(RET_SUCCESS)

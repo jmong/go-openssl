@@ -6,24 +6,24 @@ import (
     "strconv"
 )
 
-type SelfSignedBuilder interface {
-    NewkeyRSA(int)     SelfSignedBuilder
-    NewkeyDSA(string)  SelfSignedBuilder
-    NewkeyEC(string)   SelfSignedBuilder
-    Digest(string)     SelfSignedBuilder
-    Out(string)        SelfSignedBuilder
-    X509(bool)         SelfSignedBuilder
-    Days(int)          SelfSignedBuilder
-    NoDES(bool)        SelfSignedBuilder
-    Key(string)        SelfSignedBuilder
-    Extensions(string) SelfSignedBuilder
-    Config(string)     SelfSignedBuilder
-    New(bool)          SelfSignedBuilder
+type CertificateBuilder interface {
+    NewkeyRSA(int)     CertificateBuilder
+    NewkeyDSA(string)  CertificateBuilder
+    NewkeyEC(string)   CertificateBuilder
+    Digest(string)     CertificateBuilder
+    Out(string)        CertificateBuilder
+    X509(bool)         CertificateBuilder
+    Days(int)          CertificateBuilder
+    NoDES(bool)        CertificateBuilder
+    Key(string)        CertificateBuilder
+    Extensions(string) CertificateBuilder
+    Config(string)     CertificateBuilder
+    New(bool)          CertificateBuilder
     
-    Build()            SelfSigned            
+    Build()            Certificate            
 }
 
-type selfSignedBuild struct {
+type CertificateBuild struct {
 	newkeyrsa  Attribute
     newkeydsa  Attribute
     newkeyec   Attribute
@@ -41,14 +41,14 @@ type selfSignedBuild struct {
 /*
  *
  */
-func NewSelfSignedBuilder() SelfSignedBuilder {
-	return &selfSignedBuild{}
+func NewCertificateBuilder() CertificateBuilder {
+	return &CertificateBuild{}
 }
 
 /*
  *
  */
-func (sb *selfSignedBuild) NewkeyRSA(bits int) SelfSignedBuilder {
+func (sb *CertificateBuild) NewkeyRSA(bits int) CertificateBuilder {
 	sb.newkeyrsa = Attribute{Native: INT, IsUpdated: true, Arg: "-newkey", Prepend: "rsa:", ValueInt: bits}
 	return sb
 }
@@ -56,7 +56,7 @@ func (sb *selfSignedBuild) NewkeyRSA(bits int) SelfSignedBuilder {
 /*
  *
  */
-func (sb *selfSignedBuild) NewkeyDSA(file string) SelfSignedBuilder {
+func (sb *CertificateBuild) NewkeyDSA(file string) CertificateBuilder {
 	sb.newkeydsa = Attribute{Native: STRING, IsUpdated: true, Arg: "-newkey", Prepend: "dsa:", Value: file}
 	return sb
 }
@@ -64,7 +64,7 @@ func (sb *selfSignedBuild) NewkeyDSA(file string) SelfSignedBuilder {
 /*
  *
  */
-func (sb *selfSignedBuild) NewkeyEC(file string) SelfSignedBuilder {
+func (sb *CertificateBuild) NewkeyEC(file string) CertificateBuilder {
 	sb.newkeyec = Attribute{Native: STRING, IsUpdated: true, Arg: "-newkey", Prepend: "ec:", Value: file}
 	return sb
 }
@@ -72,7 +72,7 @@ func (sb *selfSignedBuild) NewkeyEC(file string) SelfSignedBuilder {
 /*
  *
  */
-func (sb *selfSignedBuild) Digest(digest string) SelfSignedBuilder {
+func (sb *CertificateBuild) Digest(digest string) CertificateBuilder {
 	sb.digest = Attribute{Native: STRING, IsUpdated: true, Prepend: "-", Value: digest}
 	return sb
 }
@@ -80,7 +80,7 @@ func (sb *selfSignedBuild) Digest(digest string) SelfSignedBuilder {
 /*
  *
  */
-func (sb *selfSignedBuild) Out(file string) SelfSignedBuilder {
+func (sb *CertificateBuild) Out(file string) CertificateBuilder {
 	sb.out = Attribute{Native: STRING, IsUpdated: true, Arg: "-out", Value: file}
 	return sb
 }
@@ -88,7 +88,7 @@ func (sb *selfSignedBuild) Out(file string) SelfSignedBuilder {
 /*
  *
  */
-func (sb *selfSignedBuild) X509(enabled bool) SelfSignedBuilder {
+func (sb *CertificateBuild) X509(enabled bool) CertificateBuilder {
 	sb.x509 = Attribute{Native: BOOL, IsUpdated: true, Arg: "-x509", ValueBool: enabled}
 	return sb
 }
@@ -96,7 +96,7 @@ func (sb *selfSignedBuild) X509(enabled bool) SelfSignedBuilder {
 /*
  *
  */
-func (sb *selfSignedBuild) Days(days int) SelfSignedBuilder {
+func (sb *CertificateBuild) Days(days int) CertificateBuilder {
 	sb.days = Attribute{Native: INT, IsUpdated: true, Arg: "-days", ValueInt: days}
 	return sb
 }
@@ -104,7 +104,7 @@ func (sb *selfSignedBuild) Days(days int) SelfSignedBuilder {
 /*
  *
  */
-func (sb *selfSignedBuild) NoDES(enabled bool) SelfSignedBuilder {
+func (sb *CertificateBuild) NoDES(enabled bool) CertificateBuilder {
 	sb.nodes = Attribute{Native: BOOL, IsUpdated: true, Arg: "-nodes", ValueBool: enabled}
 	return sb
 }
@@ -112,7 +112,7 @@ func (sb *selfSignedBuild) NoDES(enabled bool) SelfSignedBuilder {
 /*
  *
  */
-func (sb *selfSignedBuild) Key(file string) SelfSignedBuilder {
+func (sb *CertificateBuild) Key(file string) CertificateBuilder {
 	sb.key = Attribute{Native: STRING, IsUpdated: true, Arg: "-key", Value: file}
 	return sb
 }
@@ -120,7 +120,7 @@ func (sb *selfSignedBuild) Key(file string) SelfSignedBuilder {
 /*
  *
  */
-func (sb *selfSignedBuild) Extensions(certext string) SelfSignedBuilder {
+func (sb *CertificateBuild) Extensions(certext string) CertificateBuilder {
 	sb.extensions = Attribute{Native: STRING, IsUpdated: true, Arg: "-extensions", Value: certext}
 	return sb
 }
@@ -128,7 +128,7 @@ func (sb *selfSignedBuild) Extensions(certext string) SelfSignedBuilder {
 /*
  *
  */
-func (sb *selfSignedBuild) Config(file string) SelfSignedBuilder {
+func (sb *CertificateBuild) Config(file string) CertificateBuilder {
 	sb.config = Attribute{Native: STRING, IsUpdated: true, Arg: "-config", Value: file}
 	return sb
 }
@@ -136,7 +136,7 @@ func (sb *selfSignedBuild) Config(file string) SelfSignedBuilder {
 /*
  *
  */
-func (sb *selfSignedBuild) New(isnew bool) SelfSignedBuilder {
+func (sb *CertificateBuild) New(isnew bool) CertificateBuilder {
 	sb.new = Attribute{Native: BOOL, IsUpdated: true, Arg: "-new", ValueBool: isnew}
 	return sb
 }
@@ -144,11 +144,11 @@ func (sb *selfSignedBuild) New(isnew bool) SelfSignedBuilder {
 /*
  *
  */
-func (sb *selfSignedBuild) Build() SelfSigned {
-    return SelfSigned{
+func (sb *CertificateBuild) Build() Certificate {
+    return Certificate{
 		cmd:          OPENSSL,
-		action:       ACTION,
-		Description:  DESCRIPTION,
+		action:       "req",
+		Description:  "Create certificate",
 		NewkeyRSA:    sb.newkeyrsa,
 		NewkeyDSA:    sb.newkeydsa,
 		NewkeyEC:     sb.newkeyec,
@@ -164,7 +164,7 @@ func (sb *selfSignedBuild) Build() SelfSigned {
 	}
 }
 
-type SelfSigned struct {
+type Certificate struct {
 	cmd          string
 	action       string
 	Description  string
@@ -185,7 +185,7 @@ type SelfSigned struct {
 /*
  *
  */
-func (ss *SelfSigned) String() string {
+func (ss *Certificate) String() string {
 	cmdline := ss.cmd + " " + ss.action + " "
 	if ss.NewkeyRSA.IsSet() {
 		cmdline = cmdline + " " + ss.NewkeyRSA.Arg + " " + ss.NewkeyRSA.Prepend + strconv.Itoa(ss.NewkeyRSA.ValueInt)
@@ -212,13 +212,13 @@ func (ss *SelfSigned) String() string {
 		cmdline = cmdline + " " + ss.NoDES.Arg
 	}
     if ss.Key.IsSet() {
-		cmdline = cmdline + " " + ss.Key.Arg + ss.Key.Value
+		cmdline = cmdline + " " + ss.Key.Arg + " " + ss.Key.Value
 	}
     if ss.Extensions.IsSet() {
-		cmdline = cmdline + " " + ss.Extensions.Arg + ss.Extensions.Value
+		cmdline = cmdline + " " + ss.Extensions.Arg + " " + ss.Extensions.Value
 	}
     if ss.Config.IsSet() {
-		cmdline = cmdline + " " + ss.Config.Arg + ss.Config.Value
+		cmdline = cmdline + " " + ss.Config.Arg + " " + ss.Config.Value
 	}
     if ss.New.IsSet() {
 		cmdline = cmdline + " " + ss.New.Arg
@@ -227,7 +227,7 @@ func (ss *SelfSigned) String() string {
 	return cmdline
 }
 
-func (ss *SelfSigned) Array() []string {
+func (ss *Certificate) Array() []string {
     r := []string{}
     r = append(r, ss.cmd)
     r = append(r, ss.action)
@@ -279,7 +279,7 @@ func (ss *SelfSigned) Array() []string {
     return r
 }
 
-func (ss *SelfSigned) Exec() error {
+func (ss *Certificate) Exec() error {
 	r := ss.Array()
     c, args := r[0], r[1:]
     cmd := exec.Command(c, args...)
