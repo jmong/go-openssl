@@ -5,5 +5,7 @@ GO   := $(shell which go)
 build:
 	$(GO) build -o build/$(PROG) main.go
 
+rebuild: clean build
+
 clean:
 	rm -f build/$(PROG)

@@ -2,16 +2,12 @@ package main
 
 import (
     "os"
-//    "os/exec"
-//    "io"
     "bufio"
     "strings"
-//    "runtime"
-//    "log"
     "strconv"
     "fmt"
 
-    "learn-by-demo-ssl/openssl"
+    "go-openssl/openssl"
 )
 
 const (
@@ -27,6 +23,12 @@ func isFile(file string) bool {
         return false
     }
     return !info.IsDir()
+}
+
+/* @TODO
+ */
+func find(file string) string {
+    return ""
 }
 
 /*
@@ -55,17 +57,65 @@ func containsInt(needle int, haystack []int) bool {
 
 /*
  */
+func promptStr(reader *bufio.Reader, msg string) string {
+    fmt.Print(msg)
+    value, _ := reader.ReadString('\n')
+    value = strings.TrimSuffix(value, "\n")
+    return value
+}
+
+/*
+ */
+func promptInt(reader *bufio.Reader, msg string) int {
+    for ;; {
+        fmt.Print(msg)
+        value, _ := reader.ReadString('\n')
+        value = strings.TrimSuffix(value, "\n")
+        valueInt, err := strconv.Atoi(value)
+        if err == nil {
+            return valueInt
+        }
+    }
+}
+
+/*
+ */
+func promptBool(reader *bufio.Reader, msg string) bool {
+    for ;; {
+        fmt.Print(msg)
+        value, _ := reader.ReadString('\n')
+        valueBool := strings.TrimSuffix(value, "\n")
+        if valueBool == "y" {
+            return true
+        } else if valueBool == "n" {
+            return false
+        }
+    }
+}
+
+/*
+ */
+func promptStrChoice(reader *bufio.Reader, msg string, choices ...string) string {
+    for ;; {
+        value := promptStr(reader, msg)
+        if contains(value, choices) == true {
+            return value
+        }
+    }
+}
+
+/*
+ */
 func chooseGoal(reader *bufio.Reader) int {
 	for ;; {
         fmt.Println("What is your goal?")
         fmt.Println("[1] Create a self-signed certificate")
         fmt.Println("[2] Create a private key")
-        fmt.Println("[3] Create a root CA")
-        fmt.Print("Choose your goal [1-4]: ")
-        goalChoice, _ := reader.ReadString('\n')
-        goalChoice = strings.TrimSuffix(goalChoice, "\n")
-        goalChoiceNum, _ := strconv.Atoi(goalChoice)
-        if containsInt(goalChoiceNum, []int{1, 2, 3}) {
+        fmt.Println("[3] View a private key")
+        fmt.Println("[4] Create a root CA")
+        fmt.Println("[5] Connect to secure url")
+        goalChoiceNum := promptInt(reader, "Choose your goal [1-5]: ")
+        if containsInt(goalChoiceNum, []int{1, 2, 3, 4, 5}) {
             return goalChoiceNum
         }
     }
@@ -74,116 +124,93 @@ func chooseGoal(reader *bufio.Reader) int {
 /*
  */
 func buildCertificateCert(reader *bufio.Reader) openssl.Certificate {
-    var value string
-
     fmt.Println("-- Creating certificate --")
 
 	cert := openssl.NewCertificateBuilder()
-
     cert.X509(true)
     cert.NoDES(true)
+    encryption := promptStrChoice(reader, "Enter encryption [rsa,dsa,ec]: ", "rsa", "dsa", "ec")
+    switch encryption {
+    case "rsa":
+        cert.NewkeyRSA( promptInt(reader, "Enter RSA bit size: ") )
+    case "dsa":
+        cert.NewkeyDSA( promptStr(reader, "Enter DSA file: ") )
+    case "ec":
+        cert.NewkeyEC( promptStr(reader, "Enter EC file: ") )
+    }
+    cert.Digest( promptStr(reader, "Enter digest: ") )
+    cert.Days( promptInt(reader, "Enter days: ") )
+    cert.Out( promptStr(reader, "Enter output file: ") )
 
-    fmt.Print("Enter RSA bit size: ")
-    value, _ = reader.ReadString('\n')
-    value = strings.TrimSuffix(value, "\n")
-    newkeyrsa, _ := strconv.Atoi(value)
-    cert.NewkeyRSA(newkeyrsa)
-
-    fmt.Print("Enter digest: ")
-    value, _ = reader.ReadString('\n')
-    cert.Digest(strings.TrimSuffix(value, "\n"))
-
-    fmt.Print("Enter days: ")
-    value, _ = reader.ReadString('\n')
-    value = strings.TrimSuffix(value, "\n")
-    days, _ := strconv.Atoi(value)
-    cert.Days(days)
-
-    fmt.Print("Enter output file: ")
-    value, _ = reader.ReadString('\n')
-    cert.Out(strings.TrimSuffix(value, "\n"))
-    
     return cert.Build()
 }
 
 /*
  */
-func buildPrivKey(reader *bufio.Reader) openssl.PrivKey {
-    var value string
-
+func buildCreatePrivKey(reader *bufio.Reader) openssl.PrivKey {
     fmt.Println("-- Creating private key --")
 
 	privkey := openssl.NewPrivKeyBuilder()
+    privkey.Bits( promptInt(reader, "Enter bits size: ") )
+    privkey.Digest( promptStr(reader, "Enter digest: ") )
+    privkey.Seed( promptBool(reader, "Encrypt PEM output with cbc seed? [y/n]: ") )
+    privkey.Out( promptStr(reader, "Enter output file: ") )
 
-    fmt.Print("Enter bits size: ")
-    value, _ = reader.ReadString('\n')
-    value = strings.TrimSuffix(value, "\n")
-    bits, _ := strconv.Atoi(value)
-    privkey.Bits(bits)
+    return privkey.BuildCreate()
+}
 
-    fmt.Print("Enter digest: ")
-    value, _ = reader.ReadString('\n')
-    privkey.Digest(strings.TrimSuffix(value, "\n"))
+/*
+ */
+func buildViewPrivKey(reader *bufio.Reader) openssl.PrivKey {
+    fmt.Println("-- Viewing private key --")
 
-    fmt.Print("Encrypt PEM output with cbc seed? [y/n]: ")
-    value, _ = reader.ReadString('\n')
-    switch strings.TrimSuffix(value, "\n") {
-    case "y":
-        privkey.Seed(true)
-    default:
-        privkey.Seed(false)
-    }
-
-    fmt.Print("Enter output file: ")
-    value, _ = reader.ReadString('\n')
-    privkey.Out(strings.TrimSuffix(value, "\n"))
+	privkey := openssl.NewPrivKeyBuilder()
+    privkey.InFile( promptStr(reader, "Enter private key file: ") )
+    privkey.NoOut( promptBool(reader, "Display? [y/n]: ") )
+    privkey.Check( promptBool(reader, "Check? [y/n]: ") )
+    privkey.Text( promptBool(reader, "Text? [y/n]: ") )
     
-    return privkey.Build()
+    return privkey.BuildView()
 }
 
 /* @TODO
  * @see https://jamielinux.com/docs/openssl-certificate-authority/create-the-root-pair.html
  */
 func buildRootCA(reader *bufio.Reader, privkey *openssl.PrivKey) openssl.Certificate {
-    var value string
-
     fmt.Println("-- Creating CA certificate --")
 
 	cert := openssl.NewCertificateBuilder()
-
     cert.X509(true)
     cert.NoDES(true)
     cert.New(true)
-    
-    fmt.Print("Enter private key file: ")
     if privkey.Out.IsUpdated {
-        fmt.Println(privkey.Out.Value)
+        fmt.Printf("Enter private key file: %s\n", privkey.Out.Value)
         cert.Key(privkey.Out.Value)
+    } else {
+        cert.Key( promptStr(reader, "Enter private key file: ") )
     }
-
-    fmt.Print("Enter config file: ")
-    value, _ = reader.ReadString('\n')
-    cert.Config(strings.TrimSuffix(value, "\n"))
-
-    fmt.Print("Enter extensions: ")
-    value, _ = reader.ReadString('\n')
-    cert.Extensions(strings.TrimSuffix(value, "\n"))
-
-    fmt.Print("Enter digest: ")
-    value, _ = reader.ReadString('\n')
-    cert.Digest(strings.TrimSuffix(value, "\n"))
-
-    fmt.Print("Enter days: ")
-    value, _ = reader.ReadString('\n')
-    value = strings.TrimSuffix(value, "\n")
-    days, _ := strconv.Atoi(value)
-    cert.Days(days)
-
-    fmt.Print("Enter output file: ")
-    value, _ = reader.ReadString('\n')
-    cert.Out(strings.TrimSuffix(value, "\n"))
+    cert.Config( promptStr(reader, "Enter config file: ") )
+    cert.Extensions( promptStr(reader, "Enter extensions: ") )
+    cert.Digest( promptStr(reader, "Enter digest: ") )
+    cert.Days( promptInt(reader, "Enter days: ") )
+    cert.Out( promptStr(reader, "Enter output file: ") )
     
     return cert.Build() 
+}
+
+/*
+ */
+func buildSClientConnect(reader *bufio.Reader) openssl.SClient {
+    fmt.Println("-- Connecting to secure url --")
+
+	sclient := openssl.NewSClientBuilder()
+    hostname := promptStr(reader, "Enter url's hostname: ")
+    sclient.Host(hostname)
+    port := promptInt(reader, "Enter url's port: ")
+    sclient.Port(port)
+    sclient.Connect(hostname, port)
+    
+    return sclient.BuildConnect()
 }
 
 /*
@@ -204,11 +231,15 @@ func main() {
         fmt.Println(cert.String())
         cert.Exec()
     case 2:
-        privkey := buildPrivKey(reader)
+        privkey := buildCreatePrivKey(reader)
         fmt.Println(privkey.String())
         privkey.Exec()
     case 3:
-        privkey := buildPrivKey(reader)
+        privkey := buildViewPrivKey(reader)
+        fmt.Println(privkey.String())
+        privkey.Exec()
+    case 4:
+        privkey := buildCreatePrivKey(reader)
         pkerr := privkey.Exec()
         if pkerr == nil {
             cacert := buildRootCA(reader, &privkey)
@@ -217,6 +248,10 @@ func main() {
         } else {
             fmt.Printf("Error creating private key: %s\n", pkerr)
         }
+    case 5:
+        sclient := buildSClientConnect(reader)
+        fmt.Println(sclient.String())
+        sclient.Exec()
     }
 
     os.Exit(RET_SUCCESS)

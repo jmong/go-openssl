@@ -1,7 +1,7 @@
-module learn-by-demo-ssl
+module go-openssl
 
-require learn-by-demo-ssl/openssl v0.0.0
+require go-openssl/openssl v0.0.0
 
-replace learn-by-demo-ssl/openssl => ./openssl
+replace go-openssl/openssl => ./openssl
 
 go 1.12
