@@ -49,6 +49,9 @@ func toArray(checkupdated bool, list ...Attribute) []string {
             // Hack
             args := strings.Split(attr.Value, " ")
             for _, val := range args {
+                if attr.Prepend != "" {
+                    val = attr.Prepend + val
+                }
                 arr = append(arr, val)
             }
             continue

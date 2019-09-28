@@ -115,7 +115,7 @@ func (sb *intermediateCABuild) Extra(args string) IntermediateCABuilder {
  *
  */
 func (sb *intermediateCABuild) BuildCreate() IntermediateCA {
-    arr := []string{Cmd, "intermediateca"}
+    arr := []string{Cmd, "genrsa"}
     arr = append(arr, toArray(true, sb.newkeyrsa, sb.newkeydsa, sb.newkeyec,
                  sb.digest, sb.out, sb.x509, sb.days, sb.nodes, sb.extra)...)
     

@@ -155,7 +155,7 @@ func (sb *CertificateBuild) Extra(args string) CertificateBuilder {
  *
  */
 func (sb *CertificateBuild) BuildCreate() Certificate {
-    arr := []string{Cmd, "certificate"}
+    arr := []string{Cmd, "req"}
     arr = append(arr, toArray(true, sb.newkeyrsa, sb.newkeydsa, sb.newkeyec,
                  sb.digest, sb.out, sb.x509, sb.days, sb.nodes, 
                  sb.key, sb.extensions, sb.config, sb.new, sb.extra)...)
