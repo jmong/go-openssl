@@ -2,6 +2,7 @@ package openssl
 
 import (
     "strconv"
+    "strings"
 )
 
 type NativeType int
@@ -24,7 +25,10 @@ type Attribute struct {
     IsUpdated   bool
 }
 
-/*
+/* Parse list of attribute values into an array.
+ * @param  checkupdated Enables parsing if IsUpdated attribute is true
+ * @param  list         List of attributes to parse
+ * @return Array of the attributes values
  */
 func toArray(checkupdated bool, list ...Attribute) []string {
     arr := []string{}
@@ -35,11 +39,19 @@ func toArray(checkupdated bool, list ...Attribute) []string {
         if attr.Arg != "" && attr.Native != BOOL {
             arr = append(arr, attr.Arg)
         }
-        
+
         var val string
         switch attr.Native {
         case STRING:
-            val = attr.Value
+            if attr.Value == "" {
+                continue
+            }
+            // Hack
+            args := strings.Split(attr.Value, " ")
+            for _, val := range args {
+                arr = append(arr, val)
+            }
+            continue
         case INT:
             val = strconv.Itoa(attr.ValueInt)
         case INT64:
@@ -58,7 +70,7 @@ func toArray(checkupdated bool, list ...Attribute) []string {
     return arr
 }
 
-/*
+/* @DEPRECATED
  * 
  */
 func (attr *Attribute) IsSet() bool {
@@ -80,6 +92,6 @@ func (attr *Attribute) IsSet() bool {
             return true
         }
     }
-   
+
     return false
 }

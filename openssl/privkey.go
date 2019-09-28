@@ -3,7 +3,6 @@ package openssl
 import (
     "os"
     "os/exec"
-//    "strconv"
     "strings"
 )
 
@@ -17,6 +16,7 @@ type PrivKeyBuilder interface {
     Text(bool)      PrivKeyBuilder
     Bits(int)       PrivKeyBuilder
     InFile(string)  PrivKeyBuilder
+    Extra(string)   PrivKeyBuilder
 
     BuildCreate()   PrivKey
     BuildView()     PrivKey
@@ -32,6 +32,7 @@ type privKeyBuild struct {
     text    Attribute
     bits    Attribute
     infile  Attribute
+    extra   Attribute
 }
 
 /*
@@ -116,12 +117,20 @@ func (sb *privKeyBuild) Text(enabled bool) PrivKeyBuilder {
 /*
  *
  */
+func (sb *privKeyBuild) Extra(args string) PrivKeyBuilder {
+	sb.extra = Attribute{Native: STRING, IsUpdated: true, Value: args}
+	return sb
+}
+
+/*
+ *
+ */
 func (sb *privKeyBuild) BuildCreate() PrivKey {
-    arr := []string{OPENSSL, "genrsa"}
-    arr = append(arr, toArray(true, sb.bits, sb.digest, sb.out, sb.seed)...) 
+    arr := []string{Cmd, "genrsa"}
+    arr = append(arr, toArray(true, sb.bits, sb.digest, sb.out, sb.seed, sb.extra)...) 
     
     return PrivKey{
-		cmd:          OPENSSL,
+		cmd:          Cmd,
 		action:       "genrsa",
         array:        arr,
 		Description:  "Create private key",
@@ -136,11 +145,11 @@ func (sb *privKeyBuild) BuildCreate() PrivKey {
  *
  */
 func (sb *privKeyBuild) BuildView() PrivKey {
-    arr := []string{OPENSSL, "rsa"}
-    arr = append(arr, toArray(true, sb.infile, sb.noout, sb.check, sb.text)...) 
+    arr := []string{Cmd, "rsa"}
+    arr = append(arr, toArray(true, sb.infile, sb.noout, sb.check, sb.text, sb.extra)...) 
     
     return PrivKey{
-		cmd:          OPENSSL,
+		cmd:          Cmd,
 		action:       "rsa",
         array:        arr,
 		Description:  "View private key",

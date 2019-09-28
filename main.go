@@ -15,9 +15,11 @@ const (
     RET_ERROR   = 1
 )
 
-/*
+/* Checks if a file exists.
+ * @param file To check
+ * @return True if the file exists or else false
  */
-func isFile(file string) bool {
+func isFileExist(file string) bool {
     info, err := os.Stat(file)
     if os.IsNotExist(err) {
         return false
@@ -25,9 +27,19 @@ func isFile(file string) bool {
     return !info.IsDir()
 }
 
-/* @TODO
+/* Find fullpath to a file.
+ * @param file To find
+ * @return Fullpath to file or "" if not found
  */
-func find(file string) string {
+func whichFile(file string) string {
+    envpaths := strings.Split(os.Getenv("PATH"), ":")
+    for _, envpath := range envpaths {
+        filepath := envpath + "/" + file
+        if isFileExist(filepath) == true {
+            return filepath
+        }
+    }
+
     return ""
 }
 
@@ -126,7 +138,7 @@ func chooseGoal(reader *bufio.Reader) int {
 func buildCertificateCert(reader *bufio.Reader) openssl.Certificate {
     fmt.Println("-- Creating certificate --")
 
-	cert := openssl.NewCertificateBuilder()
+    cert := openssl.NewCertificateBuilder()
     cert.X509(true)
     cert.NoDES(true)
     encryption := promptStrChoice(reader, "Enter encryption [rsa,dsa,ec]: ", "rsa", "dsa", "ec")
@@ -142,7 +154,7 @@ func buildCertificateCert(reader *bufio.Reader) openssl.Certificate {
     cert.Days( promptInt(reader, "Enter days: ") )
     cert.Out( promptStr(reader, "Enter output file: ") )
 
-    return cert.Build()
+    return cert.BuildCreate()
 }
 
 /*
@@ -150,7 +162,7 @@ func buildCertificateCert(reader *bufio.Reader) openssl.Certificate {
 func buildCreatePrivKey(reader *bufio.Reader) openssl.PrivKey {
     fmt.Println("-- Creating private key --")
 
-	privkey := openssl.NewPrivKeyBuilder()
+    privkey := openssl.NewPrivKeyBuilder()
     privkey.Bits( promptInt(reader, "Enter bits size: ") )
     privkey.Digest( promptStr(reader, "Enter digest: ") )
     privkey.Seed( promptBool(reader, "Encrypt PEM output with cbc seed? [y/n]: ") )
@@ -164,12 +176,12 @@ func buildCreatePrivKey(reader *bufio.Reader) openssl.PrivKey {
 func buildViewPrivKey(reader *bufio.Reader) openssl.PrivKey {
     fmt.Println("-- Viewing private key --")
 
-	privkey := openssl.NewPrivKeyBuilder()
+    privkey := openssl.NewPrivKeyBuilder()
     privkey.InFile( promptStr(reader, "Enter private key file: ") )
     privkey.NoOut( promptBool(reader, "Display? [y/n]: ") )
     privkey.Check( promptBool(reader, "Check? [y/n]: ") )
     privkey.Text( promptBool(reader, "Text? [y/n]: ") )
-    
+
     return privkey.BuildView()
 }
 
@@ -179,7 +191,7 @@ func buildViewPrivKey(reader *bufio.Reader) openssl.PrivKey {
 func buildRootCA(reader *bufio.Reader, privkey *openssl.PrivKey) openssl.Certificate {
     fmt.Println("-- Creating CA certificate --")
 
-	cert := openssl.NewCertificateBuilder()
+    cert := openssl.NewCertificateBuilder()
     cert.X509(true)
     cert.NoDES(true)
     cert.New(true)
@@ -194,8 +206,8 @@ func buildRootCA(reader *bufio.Reader, privkey *openssl.PrivKey) openssl.Certifi
     cert.Digest( promptStr(reader, "Enter digest: ") )
     cert.Days( promptInt(reader, "Enter days: ") )
     cert.Out( promptStr(reader, "Enter output file: ") )
-    
-    return cert.Build() 
+
+    return cert.BuildCreate()
 }
 
 /*
@@ -203,30 +215,33 @@ func buildRootCA(reader *bufio.Reader, privkey *openssl.PrivKey) openssl.Certifi
 func buildSClientConnect(reader *bufio.Reader) openssl.SClient {
     fmt.Println("-- Connecting to secure url --")
 
-	sclient := openssl.NewSClientBuilder()
-    hostname := promptStr(reader, "Enter url's hostname: ")
+    sclient := openssl.NewSClientBuilder()
+    hostname := promptStr(reader, "Enter url hostname: ")
     sclient.Host(hostname)
-    port := promptInt(reader, "Enter url's port: ")
+    port := promptInt(reader, "Enter url port: ")
     sclient.Port(port)
     sclient.Connect(hostname, port)
-    
+    sclient.Extra( promptStr(reader, "(Optional) Enter any extra arguments []: ") )
+
     return sclient.BuildConnect()
 }
 
 /*
  */
 func main() {
-	var goal int
-	
-    if ret := isFile(openssl.OPENSSL); ret == false {
-        fmt.Printf("Error, %s command is not found", openssl.OPENSSL)
+    var goal int
+
+    openssl.Cmd = whichFile("openssl")
+    fmt.Printf("[Debug] openssl cmd = %s\n", openssl.Cmd)
+    if openssl.Cmd == "" {
+        fmt.Printf("Error, %s command is not found", openssl.Cmd)
         os.Exit(RET_ERROR)
     }
 
     reader := bufio.NewReader(os.Stdin)
 
     switch goal = chooseGoal(reader); goal {
-	case 1:
+    case 1:
         cert := buildCertificateCert(reader)
         fmt.Println(cert.String())
         cert.Exec()

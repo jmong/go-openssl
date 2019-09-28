@@ -1,11 +1,11 @@
 package openssl
 
-const (
-    OPENSSL     = "/usr/bin/openssl"
+var (
+    Cmd string
 )
 
 type OpenSSLer interface {
-	String() string
-	Array()  []string
-	Exec()   error
+    String() string
+    Array()  []string
+    Exec()   error
 }

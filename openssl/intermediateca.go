@@ -3,7 +3,7 @@ package openssl
 import (
     "os"
     "os/exec"
-    "strconv"
+    "strings"
 )
 
 type IntermediateCABuilder interface {
@@ -15,8 +15,9 @@ type IntermediateCABuilder interface {
     X509(bool)         IntermediateCABuilder
     Days(int)          IntermediateCABuilder
     NoDES(bool)        IntermediateCABuilder
+    Extra(string)      IntermediateCABuilder
     
-    Build()            IntermediateCA            
+    BuildCreate()      IntermediateCA            
 }
 
 type intermediateCABuild struct {
@@ -28,6 +29,7 @@ type intermediateCABuild struct {
     x509       Attribute
     days       Attribute
     nodes      Attribute
+    extra      Attribute
 }
 
 /*
@@ -104,10 +106,23 @@ func (sb *intermediateCABuild) NoDES(enabled bool) IntermediateCABuilder {
 /*
  *
  */
-func (sb *intermediateCABuild) Build() IntermediateCA {
+func (sb *intermediateCABuild) Extra(args string) IntermediateCABuilder {
+	sb.extra = Attribute{Native: STRING, IsUpdated: true, Value: args}
+	return sb
+}
+
+/*
+ *
+ */
+func (sb *intermediateCABuild) BuildCreate() IntermediateCA {
+    arr := []string{Cmd, "intermediateca"}
+    arr = append(arr, toArray(true, sb.newkeyrsa, sb.newkeydsa, sb.newkeyec,
+                 sb.digest, sb.out, sb.x509, sb.days, sb.nodes, sb.extra)...)
+    
     return IntermediateCA{
-		cmd:          OPENSSL,
+		cmd:          Cmd,
 		action:       "genrsa",
+        array:        arr,
 		Description:  "Create intermediate certificate",
 		NewkeyRSA:    sb.newkeyrsa,
 		NewkeyDSA:    sb.newkeydsa,
@@ -117,12 +132,14 @@ func (sb *intermediateCABuild) Build() IntermediateCA {
 		X509:         sb.x509,
 		Days:         sb.days,
 		NoDES:        sb.nodes,
+        Extra:        sb.extra,
 	}
 }
 
 type IntermediateCA struct {
 	cmd          string
 	action       string
+    array        []string
 	Description  string
 	NewkeyRSA    Attribute
     NewkeyDSA    Attribute
@@ -132,80 +149,25 @@ type IntermediateCA struct {
     X509         Attribute
     Days         Attribute
     NoDES        Attribute
+    Extra        Attribute
 }
 
 /*
  *
  */
-func (ss *IntermediateCA) String() string {
-	cmdline := ss.cmd + " " + ss.action + " "
-	if ss.NewkeyRSA.IsSet() {
-		cmdline = cmdline + " " + ss.NewkeyRSA.Arg + " " + ss.NewkeyRSA.Prepend + strconv.Itoa(ss.NewkeyRSA.ValueInt)
-	}
-	if ss.NewkeyDSA.IsSet() {
-		cmdline = cmdline + " " + ss.NewkeyDSA.Arg + " " + ss.NewkeyDSA.Prepend + ss.NewkeyDSA.Value
-	}
-	if ss.NewkeyEC.IsSet() {
-		cmdline = cmdline + " " + ss.NewkeyEC.Arg + " " + ss.NewkeyEC.Prepend + ss.NewkeyEC.Value
-	}
-	if ss.Digest.IsSet() {
-		cmdline = cmdline + " " + ss.Digest.Prepend + ss.Digest.Value
-	}
-	if ss.Days.IsSet() {
-		cmdline = cmdline + " " + ss.Days.Arg + " " + strconv.Itoa(ss.Days.ValueInt)
-	}
-	if ss.Out.IsSet() {
-		cmdline = cmdline + " " + ss.Out.Arg + " " + ss.Out.Value
-	}
-	if ss.X509.IsSet() {
-		cmdline = cmdline + " " + ss.X509.Arg
-	}
-	if ss.NoDES.IsSet() {
-		cmdline = cmdline + " " + ss.NoDES.Arg
-	}
-	
-	return cmdline
+func (sb *IntermediateCA) String() string {
+    return strings.Join(sb.array, " ")
 }
 
-func (ss *IntermediateCA) Array() []string {
-    r := []string{}
-    r = append(r, ss.cmd)
-    r = append(r, ss.action)
-    if ss.NewkeyRSA.IsSet() {
-		r = append(r, ss.NewkeyRSA.Arg)
-		r = append(r, ss.NewkeyRSA.Prepend + strconv.Itoa(ss.NewkeyRSA.ValueInt))
-	}
-    if ss.NewkeyDSA.IsSet() {
-		r = append(r, ss.NewkeyDSA.Arg)
-		r = append(r, ss.NewkeyRSA.Prepend + ss.NewkeyDSA.Value)
-	}
-	if ss.NewkeyEC.IsSet() {
-		r = append(r, ss.NewkeyEC.Arg)
-		r = append(r, ss.NewkeyRSA.Prepend + ss.NewkeyEC.Value)
-	}
-    if ss.Digest.IsSet() {
-		r = append(r, ss.Digest.Prepend + ss.Digest.Value)
-	}
-    if ss.Out.IsSet() {
-		r = append(r, ss.Out.Arg)
-		r = append(r, ss.Out.Value)
-	}
-	if ss.Days.IsSet() {
-		r = append(r, ss.Days.Arg)
-		r = append(r, strconv.Itoa(ss.Days.ValueInt))
-	}
-	if ss.X509.IsSet() {
-		r = append(r, ss.X509.Arg)
-	}
-	if ss.NoDES.IsSet() {
-		r = append(r, ss.NoDES.Arg)
-	}	
-    
-    return r
+/*
+ *
+ */
+func (sb *IntermediateCA) Array() []string {
+    return sb.array
 }
 
-func (ss *IntermediateCA) Exec() error {
-	r := ss.Array()
+func (sb *IntermediateCA) Exec() error {
+	r := sb.Array()
     c, args := r[0], r[1:]
     cmd := exec.Command(c, args...)
     cmd.Stdout = os.Stdout
