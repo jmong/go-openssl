@@ -1,9 +1,9 @@
-PROG := learn-by-demo-ssl
+PROG := go-openssl
 GO   := $(shell which go)
 
 .PHONY: build clean
 build:
-	$(GO) build -o build/$(PROG) main.go
+	$(GO) build -o build/$(PROG)
 
 rebuild: clean build
 

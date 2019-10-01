@@ -21,7 +21,7 @@ type Attribute struct {
     ValueBool   bool
     Prepend     string
     Native      NativeType
-    Required    bool
+//    Required    bool
     IsUpdated   bool
 }
 
@@ -62,8 +62,11 @@ func toArray(checkupdated bool, list ...Attribute) []string {
         case BOOL:
             if attr.ValueBool == true {
                 val = attr.Arg
+            } else {
+                continue
             }
         }
+        
         if attr.Prepend != "" {
             val = attr.Prepend + val
         }

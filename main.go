@@ -15,6 +15,13 @@ const (
     RET_ERROR   = 1
 )
 
+var (
+    cert     openssl.Certificate
+    privkey  openssl.PrivKey
+    sclient  openssl.SClient
+    csr      openssl.CSR
+)
+
 /* Checks if a file exists.
  * @param file To check
  * @return True if the file exists or else false
@@ -29,10 +36,12 @@ func isFileExist(file string) bool {
 
 /* Find fullpath to a file.
  * @param file To find
+ * @param paths Set of directories to find the file in 
+ * @param delim Separator between each directory in {paths}
  * @return Fullpath to file or "" if not found
  */
-func whichFile(file string) string {
-    envpaths := strings.Split(os.Getenv("PATH"), ":")
+func whichFile(file string, paths string, delim string) string {
+    envpaths := strings.Split(paths, delim)
     for _, envpath := range envpaths {
         filepath := envpath + "/" + file
         if isFileExist(filepath) == true {
@@ -118,112 +127,21 @@ func promptStrChoice(reader *bufio.Reader, msg string, choices ...string) string
 
 /*
  */
-func chooseGoal(reader *bufio.Reader) int {
+func chooseTask(reader *bufio.Reader) int {
 	for ;; {
-        fmt.Println("What is your goal?")
-        fmt.Println("[1] Create a self-signed certificate")
-        fmt.Println("[2] Create a private key")
-        fmt.Println("[3] View a private key")
-        fmt.Println("[4] Create a root CA")
-        fmt.Println("[5] Connect to secure url")
-        goalChoiceNum := promptInt(reader, "Choose your goal [1-5]: ")
-        if containsInt(goalChoiceNum, []int{1, 2, 3, 4, 5}) {
-            return goalChoiceNum
+        fmt.Println("What do you want to do?")
+        fmt.Println("[1] Create a TLS Certificate")
+        fmt.Println("[2] Create a Private Key")
+        fmt.Println("[3] View a Private Key")
+        fmt.Println("[4] Create a Root CA")
+        fmt.Println("[5] Connect to Secure URL")
+        fmt.Println("[6] Create a CSR")
+        fmt.Println("[7] View a CSR")
+        taskNum := promptInt(reader, "Choose your task [1-7]: ")
+        if containsInt(taskNum, []int{1, 2, 3, 4, 5, 6, 7}) {
+            return taskNum
         }
     }
-}
-
-/*
- */
-func buildCertificateCert(reader *bufio.Reader) openssl.Certificate {
-    fmt.Println("-- Creating certificate --")
-
-    cert := openssl.NewCertificateBuilder()
-    cert.X509(true)
-    cert.NoDES(true)
-    encryption := promptStrChoice(reader, "Enter encryption [rsa,dsa,ec]: ", "rsa", "dsa", "ec")
-    switch encryption {
-    case "rsa":
-        cert.NewkeyRSA( promptInt(reader, "Enter RSA bit size: ") )
-    case "dsa":
-        cert.NewkeyDSA( promptStr(reader, "Enter DSA file: ") )
-    case "ec":
-        cert.NewkeyEC( promptStr(reader, "Enter EC file: ") )
-    }
-    cert.Digest( promptStr(reader, "Enter digest: ") )
-    cert.Days( promptInt(reader, "Enter days: ") )
-    cert.Out( promptStr(reader, "Enter output file: ") )
-
-    return cert.BuildCreate()
-}
-
-/*
- */
-func buildCreatePrivKey(reader *bufio.Reader) openssl.PrivKey {
-    fmt.Println("-- Creating private key --")
-
-    privkey := openssl.NewPrivKeyBuilder()
-    privkey.Bits( promptInt(reader, "Enter bits size: ") )
-    privkey.Digest( promptStr(reader, "Enter digest: ") )
-    privkey.Seed( promptBool(reader, "Encrypt PEM output with cbc seed? [y/n]: ") )
-    privkey.Out( promptStr(reader, "Enter output file: ") )
-
-    return privkey.BuildCreate()
-}
-
-/*
- */
-func buildViewPrivKey(reader *bufio.Reader) openssl.PrivKey {
-    fmt.Println("-- Viewing private key --")
-
-    privkey := openssl.NewPrivKeyBuilder()
-    privkey.InFile( promptStr(reader, "Enter private key file: ") )
-    privkey.NoOut( promptBool(reader, "Display? [y/n]: ") )
-    privkey.Check( promptBool(reader, "Check? [y/n]: ") )
-    privkey.Text( promptBool(reader, "Text? [y/n]: ") )
-
-    return privkey.BuildView()
-}
-
-/* @TODO
- * @see https://jamielinux.com/docs/openssl-certificate-authority/create-the-root-pair.html
- */
-func buildRootCA(reader *bufio.Reader, privkey *openssl.PrivKey) openssl.Certificate {
-    fmt.Println("-- Creating CA certificate --")
-
-    cert := openssl.NewCertificateBuilder()
-    cert.X509(true)
-    cert.NoDES(true)
-    cert.New(true)
-    if privkey.Out.IsUpdated {
-        fmt.Printf("Enter private key file: %s\n", privkey.Out.Value)
-        cert.Key(privkey.Out.Value)
-    } else {
-        cert.Key( promptStr(reader, "Enter private key file: ") )
-    }
-    cert.Config( promptStr(reader, "Enter config file: ") )
-    cert.Extensions( promptStr(reader, "Enter extensions: ") )
-    cert.Digest( promptStr(reader, "Enter digest: ") )
-    cert.Days( promptInt(reader, "Enter days: ") )
-    cert.Out( promptStr(reader, "Enter output file: ") )
-
-    return cert.BuildCreate()
-}
-
-/*
- */
-func buildSClientConnect(reader *bufio.Reader) openssl.SClient {
-    fmt.Println("-- Connecting to secure url --")
-
-    sclient := openssl.NewSClientBuilder()
-    hostname := promptStr(reader, "Enter url hostname: ")
-    sclient.Host(hostname)
-    port := promptInt(reader, "Enter url port: ")
-    sclient.Port(port)
-    sclient.Connect(hostname, port)
-    sclient.Extra( promptStr(reader, "(Optional) Enter any extra arguments []: ") )
-
-    return sclient.BuildConnect()
 }
 
 /*
@@ -231,8 +149,8 @@ func buildSClientConnect(reader *bufio.Reader) openssl.SClient {
 func main() {
     var goal int
 
-    openssl.Cmd = whichFile("openssl")
-    fmt.Printf("[Debug] openssl cmd = %s\n", openssl.Cmd)
+    openssl.Cmd = whichFile("openssl", os.Getenv("PATH"), ":")
+//    fmt.Printf("[Debug] openssl cmd = %s\n", openssl.Cmd)
     if openssl.Cmd == "" {
         fmt.Printf("Error, %s command is not found", openssl.Cmd)
         os.Exit(RET_ERROR)
@@ -240,33 +158,41 @@ func main() {
 
     reader := bufio.NewReader(os.Stdin)
 
-    switch goal = chooseGoal(reader); goal {
+    switch goal = chooseTask(reader); goal {
     case 1:
-        cert := buildCertificateCert(reader)
+        cert = buildCertificateCreate(reader)
         fmt.Println(cert.String())
         cert.Exec()
     case 2:
-        privkey := buildCreatePrivKey(reader)
+        privkey = buildPrivKeyCreate(reader)
         fmt.Println(privkey.String())
         privkey.Exec()
     case 3:
-        privkey := buildViewPrivKey(reader)
+        privkey = buildPrivKeyView(reader)
         fmt.Println(privkey.String())
         privkey.Exec()
     case 4:
-        privkey := buildCreatePrivKey(reader)
+        privkey = buildPrivKeyCreate(reader)
         pkerr := privkey.Exec()
         if pkerr == nil {
-            cacert := buildRootCA(reader, &privkey)
+            cacert := buildRootCACreate(reader, &privkey)
             fmt.Println(cacert.String())
             cacert.Exec()
         } else {
             fmt.Printf("Error creating private key: %s\n", pkerr)
         }
     case 5:
-        sclient := buildSClientConnect(reader)
+        sclient = buildSClientConnect(reader)
         fmt.Println(sclient.String())
         sclient.Exec()
+    case 6:
+        csr = buildCSRCreate(reader)
+        fmt.Println(csr.String())
+        csr.Exec()
+    case 7:
+        csr = buildCSRView(reader)
+        fmt.Println(csr.String())
+        csr.Exec()
     }
 
     os.Exit(RET_SUCCESS)

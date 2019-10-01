@@ -2,7 +2,6 @@ package main
 
 import (
     "fmt"
-    "openssl/selfsigned"
 //    github.com/fatih/color
 )
 
