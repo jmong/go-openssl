@@ -1,1 +1,3 @@
-# learn-by-demo-ssl
+# go-openssl
+
+Tediously-interactive wrapper to the openssl utility.
